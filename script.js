@@ -16,6 +16,7 @@ let group;
 let ringGroup; 
 
 let isDragging = false;
+let hasDragged = false; // Variable para diferenciar click de arrastre
 let previousMousePosition = { x: 0, y: 0 };
 let rotationVelocity = { x: 0.002, y: 0.002 }; 
 
@@ -115,6 +116,13 @@ function createWordElement() {
     div.className = 'element-card word';
     const word = WORDS[Math.floor(Math.random() * WORDS.length)];
     div.innerHTML = `<span>${word}</span>`;
+    
+    div.addEventListener('click', () => {
+        if (!hasDragged) {
+            openTextModal(word);
+        }
+    });
+
     return div;
 }
 
@@ -123,13 +131,46 @@ function createPhotoElement() {
     div.className = 'element-card photo';
     const photoSrc = PHOTOS[Math.floor(Math.random() * PHOTOS.length)];
     div.innerHTML = `<img src="${photoSrc}" alt="Recuerdo">`;
+    
+    // Al hacer click, si no hemos arrastrado el planeta, abrimos el modal
+    div.addEventListener('click', () => {
+        if (!hasDragged) {
+            openImageModal(photoSrc);
+        }
+    });
+
     return div;
+}
+
+function openImageModal(src) {
+    const modal = document.getElementById('content-modal');
+    const modalImg = document.getElementById('modal-image');
+    const modalText = document.getElementById('modal-text');
+    
+    modalImg.src = src;
+    modalImg.classList.remove('hidden');
+    modalText.classList.add('hidden');
+    
+    modal.classList.remove('hidden');
+}
+
+function openTextModal(text) {
+    const modal = document.getElementById('content-modal');
+    const modalImg = document.getElementById('modal-image');
+    const modalText = document.getElementById('modal-text');
+    
+    modalText.textContent = text;
+    modalText.classList.remove('hidden');
+    modalImg.classList.add('hidden');
+    
+    modal.classList.remove('hidden');
 }
 
 function setupEvents() {
     window.addEventListener('resize', onWindowResize);
     document.addEventListener('mousedown', (e) => {
         isDragging = true;
+        hasDragged = false; // Reseteamos la variable al iniciar el toque
         previousMousePosition = { x: e.clientX, y: e.clientY };
     });
     document.addEventListener('mousemove', (e) => {
@@ -138,6 +179,12 @@ function setupEvents() {
             x: e.clientX - previousMousePosition.x,
             y: e.clientY - previousMousePosition.y
         };
+        
+        // Si nos movemos más de 2 píxeles, consideramos que es un arrastre y no un click
+        if (Math.abs(deltaMove.x) > 2 || Math.abs(deltaMove.y) > 2) {
+            hasDragged = true;
+        }
+
         rotationVelocity.y = deltaMove.x * 0.005;
         rotationVelocity.x = deltaMove.y * 0.005;
         previousMousePosition = { x: e.clientX, y: e.clientY };
@@ -146,6 +193,7 @@ function setupEvents() {
 
     document.addEventListener('touchstart', (e) => {
         isDragging = true;
+        hasDragged = false;
         previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     });
     document.addEventListener('touchmove', (e) => {
@@ -154,11 +202,28 @@ function setupEvents() {
             x: e.touches[0].clientX - previousMousePosition.x,
             y: e.touches[0].clientY - previousMousePosition.y
         };
+
+        if (Math.abs(deltaMove.x) > 2 || Math.abs(deltaMove.y) > 2) {
+            hasDragged = true;
+        }
+
         rotationVelocity.y = deltaMove.x * 0.005;
         rotationVelocity.x = deltaMove.y * 0.005;
         previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     });
     document.addEventListener('touchend', () => { isDragging = false; });
+
+    // Evento para cerrar el modal
+    document.getElementById('close-modal').addEventListener('click', () => {
+        document.getElementById('content-modal').classList.add('hidden');
+    });
+    
+    // También cerrar si haces click fuera de la imagen/texto (en el fondo oscuro)
+    document.getElementById('content-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'content-modal') {
+            e.target.classList.add('hidden');
+        }
+    });
 }
 
 function onWindowResize() {
