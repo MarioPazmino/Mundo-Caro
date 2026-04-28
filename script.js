@@ -73,9 +73,20 @@ function setupMusic() {
     const player = document.getElementById('music-player');
     const label = document.getElementById('music-label');
 
-    // Intenta cargar archivos de música comunes
-    const musicFiles = ['musica/musica1.mp3', 'musica/musica1.ogg', 'musica/song1.mp3',
-                        'musica/cancion1.mp3', 'musica/background.mp3', 'musica/1.mp3'];
+    // Busca tu archivo de música — puedes usar cualquier nombre de estos:
+    const musicFiles = [
+        'musica/music.mp3',     // ← Tu archivo actual
+        'musica/music.ogg',
+        'musica/musica.mp3',
+        'musica/musica1.mp3',
+        'musica/cancion.mp3',
+        'musica/cancion1.mp3',
+        'musica/song.mp3',
+        'musica/song1.mp3',
+        'musica/background.mp3',
+        'musica/1.mp3',
+        'musica/audio.mp3',
+    ];
     
     let musicFound = false;
     const tryNext = (index) => {
@@ -154,11 +165,14 @@ function init() {
 }
 
 function createPlanet() {
-    // Mezclamos fotos y videos en un pool de medios
     const mediaPool = [
         ...PHOTOS.map(src => ({ type: 'photo', src })),
         ...VIDEOS.map(src => ({ type: 'video', src }))
     ];
+
+    // Barajamos las palabras para que no se repitan
+    const shuffledWords = [...WORDS].sort(() => Math.random() - 0.5);
+    let wordIndex = 0;
 
     for (let i = 0; i < ELEMENT_COUNT; i++) {
         const phi = Math.acos(-1 + (2 * i) / ELEMENT_COUNT);
@@ -170,11 +184,25 @@ function createPlanet() {
 
         let element;
         const rnd = Math.random();
-        if (rnd > 0.75 && mediaPool.length > 0) {
+
+        // 55% de probabilidad de foto/video, 45% de palabra
+        if (rnd > 0.45 && mediaPool.length > 0) {
             const media = mediaPool[Math.floor(Math.random() * mediaPool.length)];
             element = media.type === 'video' ? createVideoElement(media.src) : createPhotoElement(media.src);
         } else {
-            element = createWordElement();
+            // Usamos la siguiente palabra del array barajado, sin repetir
+            if (wordIndex < shuffledWords.length) {
+                element = createWordElement(shuffledWords[wordIndex]);
+                wordIndex++;
+            } else {
+                // Si se agotaron las palabras, ponemos más media
+                const media = mediaPool.length > 0
+                    ? mediaPool[Math.floor(Math.random() * mediaPool.length)]
+                    : null;
+                element = media
+                    ? (media.type === 'video' ? createVideoElement(media.src) : createPhotoElement(media.src))
+                    : createWordElement(shuffledWords[Math.floor(Math.random() * shuffledWords.length)]);
+            }
         }
 
         const object = new THREE.CSS3DObject(element);
@@ -221,18 +249,14 @@ function createStarfield() {
     }
 }
 
-function createWordElement() {
+function createWordElement(word) {
+    if (!word) word = WORDS[Math.floor(Math.random() * WORDS.length)];
     const div = document.createElement('div');
     div.className = 'element-card word';
-    const word = WORDS[Math.floor(Math.random() * WORDS.length)];
     div.innerHTML = `<span>${word}</span>`;
-
     div.addEventListener('click', () => {
-        if (!hasDragged) {
-            openTextModal(word);
-        }
+        if (!hasDragged) openTextModal(word);
     });
-
     return div;
 }
 
