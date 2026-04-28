@@ -23,7 +23,17 @@
     <div id="content-modal" class="modal hidden">
         <span class="close-btn" id="close-modal">&times;</span>
         <img id="modal-image" src="" alt="Imagen ampliada" class="hidden">
+        <video id="modal-video" class="hidden" controls autoplay playsinline>
+            <source id="modal-video-src" src="" type="video/mp4">
+        </video>
         <div id="modal-text" class="hidden"></div>
+    </div>
+
+    <!-- Music Player -->
+    <div id="music-player">
+        <button id="music-btn" title="Reproducir música">🎵</button>
+        <span id="music-label">Música</span>
+        <audio id="bg-audio" loop></audio>
     </div>
 
     <!-- Three.js Global Version (No Modules) -->

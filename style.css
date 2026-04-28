@@ -225,3 +225,91 @@ body::before {
 .close-btn:hover {
     color: var(--accent-color);
 }
+/* Video en el modal */
+#modal-video {
+    max-width: 90%;
+    max-height: 85%;
+    border-radius: 16px;
+    box-shadow: 0 10px 40px rgba(0, 210, 255, 0.3);
+    outline: none;
+}
+
+/* Tarjeta de video en el planeta */
+.element-card.video {
+    width: 150px;
+    height: 120px;
+    overflow: hidden;
+    padding: 0;
+    position: relative;
+}
+
+.element-card.video video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 12px;
+    pointer-events: none;
+}
+
+.video-play-icon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 2rem;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+    pointer-events: none;
+}
+
+/* Reproductor de música flotante */
+#music-player {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 50px;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+#music-player:hover {
+    background: rgba(0, 210, 255, 0.15);
+    border-color: var(--accent-color);
+}
+
+#music-btn {
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    cursor: pointer;
+    line-height: 1;
+    animation: pulse-music 2s ease-in-out infinite;
+}
+
+#music-label {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.85rem;
+    color: rgba(255,255,255,0.7);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+@keyframes pulse-music {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+}
+
+#music-player.playing #music-btn {
+    animation: spin-music 3s linear infinite;
+}
+
+@keyframes spin-music {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}

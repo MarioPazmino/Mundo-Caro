@@ -11,44 +11,98 @@ const WORDS = [
     "Encanto", "Mi ser", "Latidos", "Mi mundo", "Te quiero mucho",
     "Para siempre", "Mi princesa", "Mágico", "Mi luna"
 ];
-// Las fotos se cargan dinámicamente desde la carpeta fotos/
-// Solo tienes que copiar tus imágenes ahí con cualquier nombre
+// Las fotos y videos se cargan dinámicamente desde sus carpetas
 let PHOTOS = [];
-let photosLoaded = false;
+let VIDEOS = [];
 
-// Carga las fotos disponibles en fotos/ probando extensiones comunes
+// Carga fotos desde fotos/
 function loadPhotosFromFolder() {
     return new Promise((resolve) => {
-        // Genera nombres comunes + índices del 1 al 30
         const extensions = ['jpg', 'jpeg', 'png', 'webp'];
         const baseNames = [];
         for (let i = 1; i <= 30; i++) baseNames.push(`photo${i}`, `foto${i}`, `img${i}`, `image${i}`, `${i}`);
 
-        const promises = [];
-
-        baseNames.forEach(name => {
-            extensions.forEach(ext => {
+        const promises = baseNames.flatMap(name =>
+            extensions.map(ext => new Promise((res) => {
                 const src = `fotos/${name}.${ext}`;
-                const p = new Promise((res) => {
-                    const img = new Image();
-                    img.onload = () => res(src);   // Existe → guardamos la ruta
-                    img.onerror = () => res(null); // No existe → ignoramos
-                    img.src = src;
-                });
-                promises.push(p);
-            });
-        });
+                const img = new Image();
+                img.onload = () => res(src);
+                img.onerror = () => res(null);
+                img.src = src;
+            }))
+        );
 
         Promise.all(promises).then(results => {
-            PHOTOS = results.filter(Boolean); // Solo las que cargaron bien
-            if (PHOTOS.length === 0) {
-                console.warn('No se encontraron fotos en la carpeta fotos/. Asegúrate de copiar imágenes allí.');
-            } else {
-                console.log(`✅ ${PHOTOS.length} foto(s) cargadas desde fotos/`);
-            }
-            photosLoaded = true;
+            PHOTOS = results.filter(Boolean);
+            console.log(`✅ ${PHOTOS.length} foto(s) cargadas`);
             resolve();
         });
+    });
+}
+
+// Carga videos desde videos/
+function loadVideosFromFolder() {
+    return new Promise((resolve) => {
+        const extensions = ['mp4', 'webm', 'mov', 'ogg'];
+        const baseNames = [];
+        for (let i = 1; i <= 20; i++) baseNames.push(`video${i}`, `vid${i}`, `clip${i}`, `${i}`);
+
+        const promises = baseNames.flatMap(name =>
+            extensions.map(ext => new Promise((res) => {
+                const src = `videos/${name}.${ext}`;
+                const video = document.createElement('video');
+                video.onloadeddata = () => res(src);
+                video.onerror = () => res(null);
+                video.preload = 'metadata';
+                video.src = src;
+            }))
+        );
+
+        Promise.all(promises).then(results => {
+            VIDEOS = results.filter(Boolean);
+            console.log(`✅ ${VIDEOS.length} video(s) cargados`);
+            resolve();
+        });
+    });
+}
+
+// Configura la música de fondo
+function setupMusic() {
+    const audio = document.getElementById('bg-audio');
+    const btn = document.getElementById('music-btn');
+    const player = document.getElementById('music-player');
+    const label = document.getElementById('music-label');
+
+    // Intenta cargar archivos de música comunes
+    const musicFiles = ['musica/musica1.mp3', 'musica/musica1.ogg', 'musica/song1.mp3',
+                        'musica/cancion1.mp3', 'musica/background.mp3', 'musica/1.mp3'];
+    
+    let musicFound = false;
+    const tryNext = (index) => {
+        if (index >= musicFiles.length) return;
+        audio.src = musicFiles[index];
+        audio.oncanplaythrough = () => { musicFound = true; };
+        audio.onerror = () => tryNext(index + 1);
+    };
+    tryNext(0);
+
+    let isPlaying = false;
+    player.addEventListener('click', () => {
+        if (!audio.src) return;
+        if (isPlaying) {
+            audio.pause();
+            player.classList.remove('playing');
+            label.textContent = 'Música';
+            isPlaying = false;
+        } else {
+            audio.play().then(() => {
+                player.classList.add('playing');
+                label.textContent = 'Sonando ♪';
+                isPlaying = true;
+            }).catch(() => {
+                label.textContent = 'Sin audio';
+            });
+        }
     });
 }
 
@@ -88,8 +142,9 @@ function init() {
     ringGroup.rotation.x = Math.PI / 4;
     scene.add(ringGroup);
 
-    // Primero cargamos las fotos, luego construimos el mundo
-    loadPhotosFromFolder().then(() => {
+    // Cargamos fotos, videos y configuramos música antes de construir el mundo
+    Promise.all([loadPhotosFromFolder(), loadVideosFromFolder()]).then(() => {
+        setupMusic();
         createPlanet();
         createRings();
         createStarfield();
@@ -99,6 +154,12 @@ function init() {
 }
 
 function createPlanet() {
+    // Mezclamos fotos y videos en un pool de medios
+    const mediaPool = [
+        ...PHOTOS.map(src => ({ type: 'photo', src })),
+        ...VIDEOS.map(src => ({ type: 'video', src }))
+    ];
+
     for (let i = 0; i < ELEMENT_COUNT; i++) {
         const phi = Math.acos(-1 + (2 * i) / ELEMENT_COUNT);
         const theta = Math.sqrt(ELEMENT_COUNT * Math.PI) * phi;
@@ -107,15 +168,19 @@ function createPlanet() {
         const y = RADIUS * Math.sin(theta) * Math.sin(phi);
         const z = RADIUS * Math.cos(phi);
 
-        const isPhoto = Math.random() > 0.75;
-        const element = isPhoto ? createPhotoElement() : createWordElement();
+        let element;
+        const rnd = Math.random();
+        if (rnd > 0.75 && mediaPool.length > 0) {
+            const media = mediaPool[Math.floor(Math.random() * mediaPool.length)];
+            element = media.type === 'video' ? createVideoElement(media.src) : createPhotoElement(media.src);
+        } else {
+            element = createWordElement();
+        }
 
         const object = new THREE.CSS3DObject(element);
         object.position.set(x, y, z);
-
         const vector = new THREE.Vector3(x, y, z).multiplyScalar(2);
         object.lookAt(vector);
-
         group.add(object);
     }
 }
@@ -171,43 +236,68 @@ function createWordElement() {
     return div;
 }
 
-function createPhotoElement() {
+function createPhotoElement(photoSrc) {
+    if (!photoSrc) photoSrc = PHOTOS[Math.floor(Math.random() * PHOTOS.length)];
     const div = document.createElement('div');
     div.className = 'element-card photo';
-    const photoSrc = PHOTOS[Math.floor(Math.random() * PHOTOS.length)];
     div.innerHTML = `<img src="${photoSrc}" alt="Recuerdo">`;
-
-    // Al hacer click, si no hemos arrastrado el planeta, abrimos el modal
     div.addEventListener('click', () => {
-        if (!hasDragged) {
-            openImageModal(photoSrc);
-        }
+        if (!hasDragged) openImageModal(photoSrc);
     });
+    return div;
+}
 
+function createVideoElement(videoSrc) {
+    const div = document.createElement('div');
+    div.className = 'element-card video';
+    div.innerHTML = `
+        <video muted preload="metadata">
+            <source src="${videoSrc}">
+        </video>
+        <span class="video-play-icon">▶️</span>
+    `;
+    div.addEventListener('click', () => {
+        if (!hasDragged) openVideoModal(videoSrc);
+    });
     return div;
 }
 
 function openImageModal(src) {
     const modal = document.getElementById('content-modal');
     const modalImg = document.getElementById('modal-image');
+    const modalVideo = document.getElementById('modal-video');
     const modalText = document.getElementById('modal-text');
-
     modalImg.src = src;
     modalImg.classList.remove('hidden');
+    modalVideo.classList.add('hidden');
+    modalVideo.pause();
     modalText.classList.add('hidden');
+    modal.classList.remove('hidden');
+}
 
+function openVideoModal(src) {
+    const modal = document.getElementById('content-modal');
+    const modalImg = document.getElementById('modal-image');
+    const modalVideo = document.getElementById('modal-video');
+    const modalText = document.getElementById('modal-text');
+    document.getElementById('modal-video-src').src = src;
+    modalVideo.load();
+    modalVideo.classList.remove('hidden');
+    modalImg.classList.add('hidden');
+    modalText.classList.add('hidden');
     modal.classList.remove('hidden');
 }
 
 function openTextModal(text) {
     const modal = document.getElementById('content-modal');
     const modalImg = document.getElementById('modal-image');
+    const modalVideo = document.getElementById('modal-video');
     const modalText = document.getElementById('modal-text');
-
     modalText.textContent = text;
     modalText.classList.remove('hidden');
     modalImg.classList.add('hidden');
-
+    modalVideo.classList.add('hidden');
+    modalVideo.pause();
     modal.classList.remove('hidden');
 }
 
@@ -258,16 +348,19 @@ function setupEvents() {
     });
     document.addEventListener('touchend', () => { isDragging = false; });
 
-    // Evento para cerrar el modal
-    document.getElementById('close-modal').addEventListener('click', () => {
+    // Función auxiliar para cerrar modal y pausar video
+    function closeModal() {
         document.getElementById('content-modal').classList.add('hidden');
-    });
+        const v = document.getElementById('modal-video');
+        if (v) v.pause();
+    }
+
+    // Evento para cerrar el modal
+    document.getElementById('close-modal').addEventListener('click', closeModal);
 
     // También cerrar si haces click fuera de la imagen/texto (en el fondo oscuro)
     document.getElementById('content-modal').addEventListener('click', (e) => {
-        if (e.target.id === 'content-modal') {
-            e.target.classList.add('hidden');
-        }
+        if (e.target.id === 'content-modal') closeModal();
     });
 }
 
