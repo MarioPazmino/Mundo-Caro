@@ -1,24 +1,66 @@
 // --- CONFIGURATION ---
 const RADIUS = 600;
-const ELEMENT_COUNT = 80; 
+const ELEMENT_COUNT = 80;
 const WORDS = [
-    "Aventura", "Sueños", "Familia", "Amistad", "Viajes", 
-    "Creatividad", "Amor", "Libertad", "Naturaleza", "Paz",
-    "Futuro", "Magia", "Sonrisas", "Destino", "Explorar",
-    "Cielo", "Estrellas", "Universo", "Alma", "Vida",
-    "Alegría", "Pasión", "Música", "Arte", "Luz"
+    "Amor", "Cariño", "Hermosa", "Morena", "Te quiero",
+    "Mi vida", "Corazón", "Ternura", "Preciosa", "Te amo",
+    "Bella", "Dulzura", "Mi todo", "Besos", "Abrazos",
+    "Suspiros", "Eterno", "Pasión", "Soñar", "Juntos",
+    "Mi alma", "Único", "Especial", "Cielo mío", "Adorada",
+    "Mi luz", "Felicidad", "Ilusión", "Bonita", "Querida",
+    "Encanto", "Mi ser", "Latidos", "Mi mundo", "Te quiero mucho",
+    "Para siempre", "Mi princesa", "Mágico", "Mi luna"
 ];
-const PHOTOS = ["photo1.png", "photo2.png", "photo3.png"];
+// Las fotos se cargan dinámicamente desde la carpeta fotos/
+// Solo tienes que copiar tus imágenes ahí con cualquier nombre
+let PHOTOS = [];
+let photosLoaded = false;
+
+// Carga las fotos disponibles en fotos/ probando extensiones comunes
+function loadPhotosFromFolder() {
+    return new Promise((resolve) => {
+        // Genera nombres comunes + índices del 1 al 30
+        const extensions = ['jpg', 'jpeg', 'png', 'webp'];
+        const baseNames = [];
+        for (let i = 1; i <= 30; i++) baseNames.push(`photo${i}`, `foto${i}`, `img${i}`, `image${i}`, `${i}`);
+
+        const promises = [];
+
+        baseNames.forEach(name => {
+            extensions.forEach(ext => {
+                const src = `fotos/${name}.${ext}`;
+                const p = new Promise((res) => {
+                    const img = new Image();
+                    img.onload = () => res(src);   // Existe → guardamos la ruta
+                    img.onerror = () => res(null); // No existe → ignoramos
+                    img.src = src;
+                });
+                promises.push(p);
+            });
+        });
+
+        Promise.all(promises).then(results => {
+            PHOTOS = results.filter(Boolean); // Solo las que cargaron bien
+            if (PHOTOS.length === 0) {
+                console.warn('No se encontraron fotos en la carpeta fotos/. Asegúrate de copiar imágenes allí.');
+            } else {
+                console.log(`✅ ${PHOTOS.length} foto(s) cargadas desde fotos/`);
+            }
+            photosLoaded = true;
+            resolve();
+        });
+    });
+}
 
 // --- SCENE SETUP ---
 let scene, camera, renderer, container;
-let group; 
-let ringGroup; 
+let group;
+let ringGroup;
 
 let isDragging = false;
 let hasDragged = false; // Variable para diferenciar click de arrastre
 let previousMousePosition = { x: 0, y: 0 };
-let rotationVelocity = { x: 0.002, y: 0.002 }; 
+let rotationVelocity = { x: 0.002, y: 0.002 };
 
 // Ring configuration
 const RING_RADIUS = 1000;
@@ -43,14 +85,17 @@ function init() {
     scene.add(group);
 
     ringGroup = new THREE.Group();
-    ringGroup.rotation.x = Math.PI / 4; 
+    ringGroup.rotation.x = Math.PI / 4;
     scene.add(ringGroup);
 
-    createPlanet();
-    createRings();
-    createStarfield();
-    setupEvents();
-    animate();
+    // Primero cargamos las fotos, luego construimos el mundo
+    loadPhotosFromFolder().then(() => {
+        createPlanet();
+        createRings();
+        createStarfield();
+        setupEvents();
+        animate();
+    });
 }
 
 function createPlanet() {
@@ -62,9 +107,9 @@ function createPlanet() {
         const y = RADIUS * Math.sin(theta) * Math.sin(phi);
         const z = RADIUS * Math.cos(phi);
 
-        const isPhoto = Math.random() > 0.75; 
+        const isPhoto = Math.random() > 0.75;
         const element = isPhoto ? createPhotoElement() : createWordElement();
-        
+
         const object = new THREE.CSS3DObject(element);
         object.position.set(x, y, z);
 
@@ -80,15 +125,15 @@ function createRings() {
         const theta = (i / RING_COUNT) * Math.PI * 2;
         const x = RING_RADIUS * Math.cos(theta);
         const z = RING_RADIUS * Math.sin(theta);
-        const y = (Math.random() - 0.5) * 50; 
+        const y = (Math.random() - 0.5) * 50;
 
         const element = createWordElement();
         element.classList.add('satellite');
-        
+
         const object = new THREE.CSS3DObject(element);
         object.position.set(x, y, z);
         object.lookAt(0, 0, 0);
-        
+
         ringGroup.add(object);
     }
 }
@@ -116,7 +161,7 @@ function createWordElement() {
     div.className = 'element-card word';
     const word = WORDS[Math.floor(Math.random() * WORDS.length)];
     div.innerHTML = `<span>${word}</span>`;
-    
+
     div.addEventListener('click', () => {
         if (!hasDragged) {
             openTextModal(word);
@@ -131,7 +176,7 @@ function createPhotoElement() {
     div.className = 'element-card photo';
     const photoSrc = PHOTOS[Math.floor(Math.random() * PHOTOS.length)];
     div.innerHTML = `<img src="${photoSrc}" alt="Recuerdo">`;
-    
+
     // Al hacer click, si no hemos arrastrado el planeta, abrimos el modal
     div.addEventListener('click', () => {
         if (!hasDragged) {
@@ -146,11 +191,11 @@ function openImageModal(src) {
     const modal = document.getElementById('content-modal');
     const modalImg = document.getElementById('modal-image');
     const modalText = document.getElementById('modal-text');
-    
+
     modalImg.src = src;
     modalImg.classList.remove('hidden');
     modalText.classList.add('hidden');
-    
+
     modal.classList.remove('hidden');
 }
 
@@ -158,11 +203,11 @@ function openTextModal(text) {
     const modal = document.getElementById('content-modal');
     const modalImg = document.getElementById('modal-image');
     const modalText = document.getElementById('modal-text');
-    
+
     modalText.textContent = text;
     modalText.classList.remove('hidden');
     modalImg.classList.add('hidden');
-    
+
     modal.classList.remove('hidden');
 }
 
@@ -179,7 +224,7 @@ function setupEvents() {
             x: e.clientX - previousMousePosition.x,
             y: e.clientY - previousMousePosition.y
         };
-        
+
         // Si nos movemos más de 2 píxeles, consideramos que es un arrastre y no un click
         if (Math.abs(deltaMove.x) > 2 || Math.abs(deltaMove.y) > 2) {
             hasDragged = true;
@@ -217,7 +262,7 @@ function setupEvents() {
     document.getElementById('close-modal').addEventListener('click', () => {
         document.getElementById('content-modal').classList.add('hidden');
     });
-    
+
     // También cerrar si haces click fuera de la imagen/texto (en el fondo oscuro)
     document.getElementById('content-modal').addEventListener('click', (e) => {
         if (e.target.id === 'content-modal') {
@@ -237,7 +282,7 @@ function animate() {
     group.rotation.y += rotationVelocity.y;
     group.rotation.x += rotationVelocity.x;
 
-    ringGroup.rotation.z += 0.001; 
+    ringGroup.rotation.z += 0.001;
     ringGroup.rotation.y += rotationVelocity.y * 0.5;
 
     if (!isDragging) {
